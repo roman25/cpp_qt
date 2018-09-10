@@ -3,109 +3,121 @@
 #include <string>
 #include <vector>
 
+#include <QApplication>
+#include <QMainWindow>
+#include <QLabel>
+#include <QString>
+
 using namespace std;
+
+// Create struct for storing statistic
+struct circuitState
+{
+    string pinName;
+    string pinState;
+};
 
 // Set required test cases
 const string openCase   = "Open";
 const string shortCase  = "Short";
+const string okCase     = "Ok";
 
 // Set parameters to parse and store data
 const string fileName               = "_cases_statistic";
-const string outputFileExtension    = ".txt";
+const string outputFileExtension    = ".txt"; // .csv and .txt are allowed
 const string inputFileExtension     = ".txt";
 string delimiter                    = "\t";
 size_t delimeterPosition            = 0;
 
-void collectPinNames (string directoryPath, vector <string> *pins)
+void createTemplate (string directoryPath, vector< pair <string, string> > *pinsState)
 {
-    /* Function collects name of contacts an integrated circuit */
+    // Function defines template with pin's state
 
-    // Set full path to a file to collect contact names
-    string filePath = directoryPath + "1" + inputFileExtension;
+
+
+    /* [RK] - I assume the template should be created another way, isn't it?
+     It may be predefined .txt for example */
+
+
+
+    // Set full path to a file
+    string filePath = directoryPath + to_string(1) + inputFileExtension;
 
     // Create input stream
-    string inputData;
     ifstream readData(filePath);
 
-    string pinName;
-
-    // Iterate for every row in the stream
-    while(getline(readData, inputData))
+    // Check if file is exists
+    if (readData.is_open())
     {
-        delimeterPosition = inputData.find(delimiter);
-        pinName = inputData.substr(0, delimeterPosition);
+        // Variable to store input data
+        string inputData;
 
-        // Skip unused rows
-        if (pinName != "" && pinName != "////MKM4//// ")
-            (*pins).push_back(pinName);
-    }
-
-    // Close input file
-    readData.close();
-}
-
-void collectStatistic(string directoryPath, vector <string> *pins, vector <int> *counterOpen, vector <int> *counterShort)
-{
-    /* Function for reading input data */
-
-    // Define variable that are help form full file name
-    int counter = 1;
-
-    // Bool variable to read undefined count of files
-    bool fileExists = true;
-
-    // Base cycle to read input file
-    while (fileExists)
-    {
-        // Set full path to a file
-        string filePath = directoryPath + to_string(counter) + inputFileExtension;
-
-        // Create input stream
-        ifstream readData(filePath);
-
-        // Check if file is exists
-        if (readData.is_open())
+        // Read a row from input
+        while(getline(readData, inputData))
         {
-            // Variable to store input data
-            string inputData;
-            string pinName;
+            delimeterPosition = inputData.find(delimiter);
 
-            // Read a row from input
-            while(getline(readData, inputData))
+            std::size_t foundOpenCase   = inputData.find(openCase);
+            std::size_t foundShortCase  = inputData.find(shortCase);
+            std::size_t foundOkCase  = inputData.find(okCase);
+            string pinName = inputData.substr(0, delimeterPosition);
+
+            // Skip unused rows
+            if (pinName != "" && pinName != "////MKM4//// ")
             {
-                // Mapping between contact name and its test case
-                // Defined as one to one relation
-                for (int i= 0; i < (*pins).size(); i++)
-                {
-                    delimeterPosition = inputData.find(delimiter);
+                string currentState;
 
-                    std::size_t foundopenCase   = inputData.find(openCase);
-                    std::size_t foundshortCase  = inputData.find(shortCase);
-                    pinName = inputData.substr(0, delimeterPosition);
-                    string temp = (*pins)[i];
-                    if (pinName == temp)
-                    {
-                        if (foundopenCase!=std::string::npos)
-                            ((*counterOpen)[i])++;
+                if (foundOpenCase!=std::string::npos)
+                    currentState = openCase;
 
-                        if (foundshortCase!=std::string::npos)
-                            ((*counterShort)[i])++;
+                if (foundShortCase!=std::string::npos)
+                    currentState = shortCase;
 
-                    }
-                }
+                if (foundOkCase!=std::string::npos)
+                    currentState = okCase;
 
+                (*pinsState).push_back(pair <string, string> (pinName, currentState));
             }
-          counter++;
-          readData.close();
         }
-        else
-           fileExists = false;
+    readData.close();
+
     }
 }
 
-void writeStatistic(string directoryPath, vector <string> *pins, vector <int> *counterOpen, vector <int> *counterShort)
+void collectStatistic(vector <circuitState> vectState, vector< pair <string, string> > *pinsState, vector <int> *counterOpen, vector <int> *counterShort, vector <int> *counterOk)
 {
-    /* Function stores statistic */
+    // Collects statistis of input data
+
+    // Iterate for every value in input data
+    for (int i= 0; i < vectState.size(); i++)
+    {
+        // Get values from input data
+        string pinName          = vectState[i].pinName;
+        string currentState     = vectState[i].pinState;
+
+        // Get values from template
+        string tempName         = (*pinsState)[i].first;
+        string tempState        = (*pinsState)[i].second;
+
+        // Compare current pin name and name from template
+        if (pinName == tempName)
+        {
+            // Choose state of a pin
+            if (currentState == openCase && currentState != tempState)
+                ((*counterOpen)[i])++;
+
+            if (currentState == shortCase && currentState != tempState)
+                ((*counterShort)[i])++;
+
+            if (currentState == okCase && currentState != tempState)
+                ((*counterOk)[i])++;
+         }
+      }
+}
+
+QString writeStatistic(string directoryPath, vector <pair <string, string> > *pinsState, vector <int> *counterOpen, vector <int> *counterShort, vector <int> *counterOk)
+{
+    /* Function stores and shows statistic */
 
     // Create output stream
     ofstream outfile;
@@ -118,8 +130,8 @@ void writeStatistic(string directoryPath, vector <string> *pins, vector <int> *c
     else if (outputFileExtension == ".csv")
         delimeter = ",";
 
-    // Define header
-    header = "Pin name" + delimeter + shortCase + delimeter + openCase + "\n";
+    // Set header for output file
+    header = "Pin name" + delimeter + shortCase + delimeter + openCase + delimeter + okCase + "\n";
 
     // Forming output file name and creating it
     string fullOutFileName = directoryPath + fileName + outputFileExtension;
@@ -127,30 +139,130 @@ void writeStatistic(string directoryPath, vector <string> *pins, vector <int> *c
 
     // Write data
     outfile << header;
-    for (int i = 0; i < (*pins).size(); i++)
-        outfile << (*pins)[i] << delimeter << (*counterShort)[i] << delimeter << (*counterOpen)[i] << endl;
 
+    string strToWrite = "";
+    for (int i = 0; i < (*pinsState).size(); i++)
+    {
+        // Form output row with statistic
+        strToWrite += ((*pinsState)[i].first + delimeter + to_string((*counterShort)[i]) + delimeter + to_string((*counterOpen)[i]) + delimeter + to_string((*counterOk)[i]) + "\n");
+
+    }
+    outfile << strToWrite;
     outfile.close();
+
+    strToWrite = header + strToWrite;
+    QString returnedString = QString::fromStdString(strToWrite);
+    return returnedString;
 }
 
-int main()
-
+vector <circuitState> convertTextToStruct(string filePath, bool *fileExists)
 {
-    // Define input path
+    // Temporary function converts input text data to structure
+
+    circuitState strCircuitState;
+    vector <circuitState> vectState;
+
+    // Create input stream
+    ifstream readData(filePath);
+
+    // Check if file is exists
+    if (readData.is_open())
+    {
+        // Variable to store input data
+        string inputData;
+
+        // Read a row from input
+        while(getline(readData, inputData))
+        {
+            delimeterPosition = inputData.find(delimiter);
+
+            std::size_t foundOpenCase   = inputData.find(openCase);
+            std::size_t foundShortCase  = inputData.find(shortCase);
+            std::size_t foundOkCase  = inputData.find(okCase);
+            string pinName = inputData.substr(0, delimeterPosition);
+
+            // Skip unused rows
+            if (pinName != "" && pinName != "////MKM4//// ")
+            {
+                string pinsState;
+
+                if (foundOpenCase!=std::string::npos)
+                    pinsState = openCase;
+
+                if (foundShortCase!=std::string::npos)
+                    pinsState = shortCase;
+
+                if (foundOkCase!=std::string::npos)
+                    pinsState = okCase;
+
+                // Collect data as vector
+                strCircuitState.pinName = pinName;
+                strCircuitState.pinState = pinsState;
+                vectState.push_back(strCircuitState);
+            }
+        }
+        readData.close();
+    }
+
+    else
+        (*fileExists) = false;
+
+    return vectState;
+}
+
+int main(int argc, char *argv[])
+{  
+    // Path to txt
     const string directoryPath = "D:\\projects\\res_OpenShortTest\\";
 
-    // Define vectors to collect count of cases
-    vector <string> pins;
-    collectPinNames(directoryPath, &pins);
+    // Define vector to collect required state of a pin
+    vector <pair <string, string> > pinsState;
+    createTemplate (directoryPath, &pinsState);
 
-    int vectorSize = pins.size();
+    // Set size of output vector
+    int vectorSize = pinsState.size();
     vector <int> counterOpen(vectorSize, 0);
     vector <int> counterShort(vectorSize, 0);
+    vector <int> counterOk(vectorSize, 0);
 
-    collectStatistic(directoryPath, &pins, &counterOpen, &counterShort);
-    writeStatistic(directoryPath, &pins, &counterOpen, &counterShort);
+    // Define variable that helps form full file name
+    int counter = 2;
 
-    cout << "---------- Done ----------" << endl;
+    // Bool variable to read undefined count of files
+    bool fileExists = true;
 
-    return 0;
+    // Base cycle to read input file
+    while (fileExists)
+    {
+        // Set full path to a file
+        string filePath = directoryPath + to_string(counter) + inputFileExtension;
+        vector <circuitState> vectState = convertTextToStruct(filePath, &fileExists);
+        collectStatistic(vectState, &pinsState, &counterOpen, &counterShort, &counterOk);
+
+        // Increment to the nex file name
+        counter++;
+    }
+
+    QString dataText = writeStatistic(directoryPath, &pinsState, &counterOpen, &counterShort, &counterOk);
+
+    // Create GUI to show results
+    QApplication application(argc, argv);
+    QMainWindow mainWindow;
+
+    // Set windows size
+    int winWidth    = 250;
+    int winHeight   = 700;
+    mainWindow.setFixedSize(winWidth,winHeight);
+
+    // Create text label and set its size
+    QLabel *label = new QLabel(&mainWindow);
+    label->setFixedWidth(winWidth);
+    label->setFixedHeight(winHeight);
+
+    // Output to window
+    label->setText(dataText);
+    mainWindow.show();
+
+    return application.exec();
+
 }
