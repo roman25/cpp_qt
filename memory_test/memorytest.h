@@ -7,7 +7,6 @@ QT_BEGIN_NAMESPACE
 class QComboBox;
 class QLineEdit;
 
-
 QT_END_NAMESPACE
 
 class Window : public QWidget
@@ -19,7 +18,7 @@ public:
 
 private slots:
     void browse();
-    void getTestCase();
+    void getLotNumber();
     void getInputParameters();
 
 private:
@@ -27,14 +26,18 @@ private:
     QLineEdit *showLine();
 
     void findFilesInDirectory(QString pathToDirectory);
-    void updateConfigBox(QComboBox *configComboBox, QString inputValue);
-    void updateConfigBox(QComboBox *configComboBox, QStringList listValues);
+    void selectValueInBox(QComboBox *box, QString inputValue);
+    void showStatusMessage(QString message);
+    void checkInputLotNumber(QString lotNumber);
 
     QComboBox *fileComboBox;
     QComboBox *configComboBox;
+
     QLineEdit *lineTestCase;
-    QLineEdit *lineType;
-    QLineEdit *lineCountStack;
+    QLineEdit *lineType;    
+    QLineEdit *lineCountChannels;
+    QLineEdit *lineCountTargets;
+    QLineEdit *lineLunTarget;
     QLineEdit *lineConfig;
     QLineEdit *lineSamples;
 
