@@ -1,10 +1,12 @@
+#include "mainwindow.h"
 #include <QApplication>
-#include "memorytest.h"
+
 int main(int argc, char *argv[])
 {
-    QApplication app(argc, argv);
-    Window window;
-    window.show();
+    QApplication a(argc, argv);
+    MainWindow w;
 
-    return app.exec();
+    w.show();
+
+    return a.exec();
 }

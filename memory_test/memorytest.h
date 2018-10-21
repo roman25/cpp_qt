@@ -1,7 +1,7 @@
 #ifndef MEMORYTEST_H
 #define MEMORYTEST_H
 
-#include <QWidget>
+#include <QDialog>
 
 QT_BEGIN_NAMESPACE
 class QComboBox;
@@ -9,12 +9,12 @@ class QLineEdit;
 
 QT_END_NAMESPACE
 
-class Window : public QWidget
+class Window : public QDialog
 {
     Q_OBJECT
 
 public:
-    Window(QWidget *parent = 0);
+    Window(QDialog *parent = 0);
 
 private slots:
     void browse();

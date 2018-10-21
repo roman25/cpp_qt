@@ -1,111 +1,48 @@
 #include <QtWidgets>
-#include "memorytest.h"
+#include "dialog.h"
+#include "ui_dialog.h"
 
-// List of allowed IC type
-const QStringList memoryType  = {"V4", "L06B", "L95B"};
-
-// List of allowed file extensions
-const QStringList extensions  = {"*.xlsm", "*.xlsx", "*.xls"};
-
-// Paramters of lot name
-const QStringList productCode   = {"N"};
-const QStringList crystalCode   = {"V", "L", "B"};
-const QStringList countStack    = {"1", "2", "4", "8", "16"};
-const QStringList countChannels = {"1", "2"};
-const QStringList countTargets  = {"1", "2", "4"};
-const QStringList LunOnTargets  = {"1", "2"};
-const QStringList status        = {"P", "E", "Q", "R"};
-
-Window::Window(QDialog *parent):QDialog(parent)
+Dialog::Dialog(QWidget *parent) :
+    QDialog(parent),
+    ui(new Ui::Dialog)
 {
-    // Create parent window
-    QGridLayout *mainLayout = new QGridLayout(this);
+    ui->setupUi(this);
+    this->setWindowTitle(tr("Memory test"));
 
-    // Define header and screen size
-    setWindowTitle(tr("Memory test"));
-    const QRect screenGeometry = QApplication::desktop()->screenGeometry(this);
-    resize(screenGeometry.width() / 2, screenGeometry.height() / 3);
+    // Set info text
+    ui->lineLotNumber->setPlaceholderText("You can use UP, low or mIX case");
 
-    // Define temporary list of used ICs. It needs for initialization of combobox
-    fileComboBox = createComboBox(memoryType);
+    // Add initial parameters into combobox
+    createComboBox(ui->comboBoxMemory, memoryType);
 
-    // Create combobox with initial value which informs about some action
-    configComboBox = createComboBox({"Need to set path to config files to get list of the files"});
+    // Performs actions when Browse button is clicked
+    connect(ui->pushButtonBrowse, &QAbstractButton::clicked, this, &Dialog::browse);
 
-    // Create lines
-    lineTestCase        = showLine();
-    lineType            = showLine();
-    lineCountChannels   = showLine();
-    lineCountTargets    = showLine();
-    lineLunTarget       = showLine();
-    lineConfig          = showLine();
-    lineSamples         = showLine();
+    // Perfomrs actions when OK button is clicked
+    connect(ui->pushButtonOk, SIGNAL(pressed ()), this, SLOT(on_pushButtonOk_clicked()));
 
-    // Create buttons for GUI
-    QPushButton *validateButton = new QPushButton(tr("Validate"));
-    connect(validateButton, &QAbstractButton::clicked, this, &Window::getLotNumber);
+    // Perfomrs actions when Cancel button is clicked
+    connect(ui->pushButtonCancel, SIGNAL(pressed ()), this, SLOT(close()));
 
-    QPushButton *browseButton = new QPushButton(tr("Browse"));
-    connect(browseButton, &QAbstractButton::clicked, this, &Window::browse);
-
-    QPushButton *launchTest = new QPushButton(tr("Run"));
-    connect(launchTest, &QAbstractButton::clicked, this, &Window::getInputParameters);
-
-    // Add graphic elements into the parent window
-    mainLayout->addWidget(new QLabel("Set a path to the config"), 0, 0);
-    mainLayout->addWidget(lineConfig, 0, 1);
-    mainLayout->addWidget(browseButton, 0, 2);
-
-    mainLayout->addWidget(new QLabel("Lot number"), 1, 0);
-    mainLayout->addWidget(lineTestCase, 1, 1);
-    mainLayout->addWidget(validateButton, 1, 2);
-    lineTestCase->setPlaceholderText("You can use UP, low or mIX case");
-
-    mainLayout->addWidget(new QLabel("Type of memory"), 2, 0);
-    mainLayout->addWidget(fileComboBox, 2, 1);
-
-    mainLayout->addWidget(new QLabel("Count of Channels"), 3, 0);
-    mainLayout->addWidget(lineCountChannels, 3, 1);
-
-    mainLayout->addWidget(new QLabel("Count of targets"), 4, 0);
-    mainLayout->addWidget(lineCountTargets, 4, 1);
-
-    mainLayout->addWidget(new QLabel("Lun on target"), 5, 0);
-    mainLayout->addWidget(lineLunTarget, 5, 1);
-
-    mainLayout->addWidget(new QLabel("Config File"), 6, 0);
-    mainLayout->addWidget(configComboBox, 6, 1);
-
-    mainLayout->addWidget(new QLabel("QTY"), 7, 0);
-    mainLayout->addWidget(lineSamples, 7, 1);
-
-    mainLayout->addWidget(launchTest, 8, 0);
 }
 
-QComboBox *Window::createComboBox(const QStringList &list)
+Dialog::~Dialog()
+{
+    delete ui;
+}
+
+QComboBox *Dialog::createComboBox(QComboBox *comboBox, const QStringList &list)
 {
     /*!
         Function creates a box with multiple values and shows their
     */
 
-    QComboBox *comboBox = new QComboBox;
     comboBox->addItems(list);
     comboBox->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
     return comboBox;
 }
 
-QLineEdit *Window::showLine()
-{
-    /*!
-        Creates and returns line for typing
-    */
-
-    QLineEdit *lineEdit = new QLineEdit;
-    lineEdit->setFocus();
-    return lineEdit;
-}
-
-void Window::browse()
+void Dialog::browse()
 {
     /*!
         Helps set path to a folder
@@ -116,12 +53,12 @@ void Window::browse()
 
     // Show path to input directory if path is not empty
     if (!directory.isEmpty()) {
-        lineConfig->setText(directory); // Show path in GUI
+        ui->lineConfig->setText(directory); // Show path in GUI
         findFilesInDirectory(directory);
     }
 }
 
-void Window::findFilesInDirectory(QString pathToDirectory)
+void Dialog::findFilesInDirectory(QString pathToDirectory)
 {
     /*!
         Filters files in a directory based on file extension
@@ -138,16 +75,16 @@ void Window::findFilesInDirectory(QString pathToDirectory)
     filteredFiles = folder.entryList();
 
     // Clear all values in box
-    configComboBox->clear();
+    ui->comboBoxConfig->clear();
 
     // Add data to box
     for (qint8 i = 0; i < filteredFiles.size(); i++)
 
         // Set files for combobox with required extensions
-        configComboBox->addItem(filteredFiles[i]);
+        ui->comboBoxConfig->addItem(filteredFiles[i]);
 }
 
-void Window::selectValueInBox(QComboBox *box, QString inputValue)
+void Dialog::selectValueInBox(QComboBox *box, QString inputValue)
 {
     /*!
         Updates values in a box
@@ -159,14 +96,14 @@ void Window::selectValueInBox(QComboBox *box, QString inputValue)
     box->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
 }
 
-void Window::getLotNumber()
+bool Dialog::checkLotNumber()
 {
     /*!
         Checks input parameter has mapping to predefined template
     */
 
     // Get IC name from GUI
-    QString inputValue = this->lineTestCase->text();
+    QString inputValue =ui->lineLotNumber->text();
 
     // Change text case to upper
     inputValue = inputValue.toUpper();
@@ -208,52 +145,10 @@ void Window::getLotNumber()
     bool hasMatch = match.hasMatch();
     if (hasMatch)
     {
-        // Check count of stack is 1 or 2 digits number
-        QString tempStack = "";
-        tempStack = inputValue[2];
-        if (inputValue[3].isDigit())
-            tempStack += inputValue[3];
-
-        // Processing count of stack from UI. Set channels, targets, luns based on the input
-        QString channels = "";
-        QString targets  = "";
-        QString luns     = "";
-
-        if (tempStack == countStack[0])
-        {
-            channels    = "1";
-            targets     = "1";
-            luns        = "1";
-        }
-        else if (tempStack == countStack[1])
-        {
-            channels    = "1";
-            targets     = "2";
-            luns        = "1";
-        }
-        else if (tempStack == countStack[2])
-        {
-            channels    = "1";
-            targets     = "2";
-            luns        = "2";
-        }
-        else if (tempStack == countStack[3])
-        {
-            channels    = "1";
-            targets     = "4";
-            luns        = "2";
-        }
-        else if (tempStack == countStack[4])
-        {
-            channels    = "2";
-            targets     = "4";
-            luns        = "2";
-        }
-
-        // Set values into UI based on conditions above
-        lineCountChannels->setText(channels);
-        lineCountTargets->setText(targets);
-        lineLunTarget->setText(luns);
+        // Set default values into UI
+        ui->lineCountChannels->setText(countChannels[0]);
+        ui->lineCountTargets->setText(countTargets[0]);
+        ui->lineLunTarget->setText(LunOnTargets[0]);
 
         // Update comboboxes widgets
         // Value in combobox is based on lot number from UI
@@ -275,29 +170,34 @@ void Window::getLotNumber()
             memory      = memoryType[2];
             confFile    = memoryType[2];
         }
-        selectValueInBox(fileComboBox, memory);
-        selectValueInBox(configComboBox, confFile);
+        selectValueInBox(ui->comboBoxMemory, memory);
+        selectValueInBox(ui->comboBoxConfig, confFile);
+
+        return true;
     }
     else
+    {
         // If no match, warning message will be shown
         showStatusMessage("Incorrect lot number");
+        return false;
+     }
 }
 
-void Window::getInputParameters()
+bool Dialog::verifyInputParameters()
 {
     /*!
-        Helps get all input parameters from UI and use their for other functions/methods
+        Verifies all input parameters from UI
     */
 
     // Get values from UI
-    QString uiConfigPath    = lineConfig ->text();
-    QString uiLotNumber     = lineTestCase->text();
-    QString uiMemoryType    = fileComboBox->currentText();
-    QString uiCountChannel  = lineCountChannels->text();
-    QString uiCountTargets  = lineCountTargets->text();
-    QString uiLunTarget     = lineLunTarget->text();
-    QString uiConfigName    = configComboBox->currentText();
-    QString uiSamples       = lineSamples->text();
+    QString uiConfigPath    = ui->lineConfig ->text();
+    QString uiLotNumber     = ui->lineLotNumber->text();
+    QString uiMemoryType    = ui->comboBoxMemory->currentText();
+    QString uiCountChannel  = ui->lineCountChannels->text();
+    QString uiCountTargets  = ui->lineCountTargets->text();
+    QString uiLunTarget     = ui->lineLunTarget->text();
+    QString uiConfigName    = ui->comboBoxConfig->currentText();
+    QString uiSamples       = ui->lineQty->text();
 
     // Verify no empty input parameters
     bool path       = uiConfigPath.isEmpty();
@@ -336,24 +236,13 @@ void Window::getInputParameters()
     if (!file)
         showStatusMessage("Check path to the file configuration");
 
-    // Any actions can be perform if no issues with input parameters
-    if (!path && !lot && !memory && !channes && !targets && !lun && !config && !samples && (countSamples > 0) && file)
-    {        
-        // Output to console for testing purpose only!
-        qInfo() << "Path to config "    << uiConfigPath;
-        qInfo() << "LotNumber "         << uiLotNumber;
-        qInfo() << "MemoryType "        << uiMemoryType;
-        qInfo() << "ConfigDirectory "   << uiConfigPath;
-        qInfo() << "CountChannel "      << uiCountChannel;
-        qInfo() << "CountTargets "      << uiCountTargets;
-        qInfo() << "LunTarget "         << uiLunTarget;
-        qInfo() << "Config name "       << uiConfigName;
-        qInfo() << "Samples "           << uiSamples;
-        qInfo() << "FullPathToConfig "  << FullPathToConfig;
-    }
+    if (!path && !lot && !memory && !channes && ! targets && !lun && !config && (countSamples > 0) && file)
+        return true;
+    else
+        return false;
 }
 
-void Window::showStatusMessage(QString message)
+void Dialog::showStatusMessage(QString message)
 {
     /*!
         Function shows warning message
@@ -361,7 +250,7 @@ void Window::showStatusMessage(QString message)
     QMessageBox::warning(this, "Warning!", message);
 }
 
-void Window::checkInputLotNumber (QString lotNumber)
+void Dialog::checkInputLotNumber (QString lotNumber)
 {
     /*!
         Verifies that input lot number accords predefined lists
@@ -494,4 +383,150 @@ void Window::checkInputLotNumber (QString lotNumber)
     // Show status message
     if (showMessage)
         showStatusMessage(message);
+}
+
+void Dialog::on_pushButtonOk_clicked()
+{
+    /*!
+     Checks all requiref parameters are right and
+     close window
+     */
+
+    bool lot, parameters, quit;
+
+    // Check lot number is correct
+    lot = checkLotNumber();
+    if (lot)
+
+        // Check all paramteres
+        parameters = verifyInputParameters();
+    {
+        // Close window if all parameters are ok
+        if (parameters)
+        {
+            quit = confirmQuit();
+            if (quit)
+                close();
+        }
+    }
+}
+
+QString Dialog::getPathToConfig()
+{
+    /*!
+     Gets path to file configuration, its name and returns full path
+    */
+
+    // Get path configuration
+    QString path = ui->lineConfig->text();
+
+    // Get file name
+    QString name = ui->comboBoxConfig->currentText();
+
+    // Define full path to configuration
+    QString fullPath = path + "\\" + name;
+
+    return fullPath;
+
+}
+
+QString Dialog::getLot()
+{
+    /*!
+      Function gets lot number from UI and returns it
+    */
+
+    // Get value from UI
+    QString lot = ui->lineLotNumber->text();
+
+    return lot;
+}
+
+QString Dialog::getMemoryType()
+{
+    /*!
+      Gets memory type and returns it
+    */
+
+    // Get value from UI
+    QString stringMemoryType = ui->comboBoxMemory->currentText();
+
+    return stringMemoryType;
+
+}
+
+int Dialog::getCountChannels()
+{
+    /*!
+      Gets and returns count of channels
+    */
+
+    // Get value from UI
+    QString stringCountChannels = ui->lineCountChannels->text();
+
+    // Convert string to number
+    int channels = stringCountChannels.toInt();
+
+    return channels;
+}
+
+int Dialog::getCountTargets()
+{
+    /*!
+      Gets and returns count of targets
+    */
+
+    // Get value from UI
+    QString stringCountTargets = ui->lineCountTargets->text();
+
+    // Convert string to number
+    int targets = stringCountTargets.toInt();
+
+    return targets;
+
+}
+
+int Dialog::getLunTarget()
+{
+    /*!
+      Return value lun on target
+    */
+
+    // Get value from UI
+    QString stringLunTarget = ui->lineLunTarget->text();
+
+    // Convert string to number
+    int luns = stringLunTarget.toInt();
+
+    return luns;
+}
+
+int Dialog::getQty()
+{
+    /*!
+    Gets and returns QTY
+    */
+
+    // Get value from UI
+    QString stringQty = ui->lineQty->text();
+
+    // Convert string to number
+    int Qty = stringQty.toInt();
+
+    return Qty;
+
+}
+
+bool Dialog::confirmQuit()
+{
+    /*!
+    Creates window for confirmation of closing
+   */
+
+  QMessageBox::StandardButton reply;
+  reply = QMessageBox::question(this, "Окно подтверждения", "Параметры указаны верно?", QMessageBox::Yes|QMessageBox::No);
+  if (reply == QMessageBox::Yes)
+      return true;
+  else
+      return false;
 }
